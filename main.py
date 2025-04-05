@@ -136,17 +136,18 @@ class GitGUI:
 
         # 历史记录区
         history_frame = ttk.LabelFrame(self.main_frame, text="提交历史记录（近一个月）", padding=10)
-        history_frame.pack(fill=tk.BOTH, expand=True, pady=5)
+        history_frame.pack(fill=tk.X, pady=5)  # 改为 fill=tk.X，不再 expand
 
         # 创建带滚动条的树形视图
         self.tree_frame = ttk.Frame(history_frame)
-        self.tree_frame.pack(fill=tk.BOTH, expand=True)
+        self.tree_frame.pack(fill=tk.BOTH)  # 移除 expand=True
 
         # 修改历史记录视图
         self.history_tree = ttk.Treeview(self.tree_frame,
                                        columns=("提交ID", "日期", "描述", "作者"),
                                        show="headings",
-                                       style="Custom.Treeview")
+                                       style="Custom.Treeview",
+                                       height=8)  # 添加固定高度，显示8行
 
         self.history_tree.heading("提交ID", text="提交ID", anchor=tk.W)
         self.history_tree.heading("日期", text="日期", anchor=tk.W)
