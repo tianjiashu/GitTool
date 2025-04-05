@@ -365,16 +365,21 @@ class GitGUI:
             self.progress_frame.pack(fill=tk.X, pady=5)
             self.progress_label = ttk.Label(self.progress_frame, text="正在推送到远程...")
             self.progress_label.pack(side=tk.LEFT, padx=5)
-            self.progress_bar = ttk.Progressbar(self.progress_frame, mode='indeterminate')
+            self.progress_bar = ttk.Progressbar(self.progress_frame, mode='determinate')
             self.progress_bar.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            self.progress_bar.start()
             self.root.update()
 
+            def update_progress(progress, message):
+                self.progress_bar['value'] = progress
+                if message:
+                    self.progress_label.config(text=f"正在推送: {message}")
+                self.root.update()
+
             # 执行推送
-            self.git_ops.push_to_remote()
+            self.git_ops.push_to_remote(progress_callback=update_progress)
 
             # 完成后更新进度
-            self.progress_bar.stop()
+            self.progress_bar['value'] = 100
             self.progress_label.config(text="推送完成！")
             self.root.update()
 

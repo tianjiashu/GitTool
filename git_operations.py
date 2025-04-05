@@ -71,7 +71,13 @@ class GitOperations:
             raise Exception("仓库中没有提交记录")
 
         origin = self.repo.remote('origin')
-        return origin.push(self.repo.active_branch, progress=progress_callback)
+        
+        def progress_handler(op_code, cur_count, max_count=None, message=''):
+            if progress_callback:
+                progress = (cur_count / max_count * 100) if max_count else 0
+                progress_callback(progress, message)
+        
+        return origin.push(self.repo.active_branch, progress=progress_handler)
 
     def pull_from_remote(self, progress_callback=None):
         """从远程仓库拉取更新"""
@@ -79,7 +85,13 @@ class GitOperations:
             raise Exception("未配置远程仓库")
         
         origin = self.repo.remote('origin')
-        return origin.pull(progress=progress_callback)
+        
+        def progress_handler(op_code, cur_count, max_count=None, message=''):
+            if progress_callback:
+                progress = (cur_count / max_count * 100) if max_count else 0
+                progress_callback(progress, message)
+        
+        return origin.pull(progress=progress_handler)
 
     def get_commit_history(self, days=30):
         """获取指定天数内的提交历史"""
