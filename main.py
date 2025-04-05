@@ -260,15 +260,27 @@ class GitGUI:
                 else:
                     return
 
-            # 添加进度条
+            # 显示进度条
             self.progress_frame = ttk.Frame(self.main_frame)
             self.progress_frame.pack(fill=tk.X, pady=5)
             self.progress_label = ttk.Label(self.progress_frame, text="")
             self.progress_label.pack(side=tk.LEFT, padx=5)
             self.progress_bar = ttk.Progressbar(self.progress_frame, mode='determinate', length=300)
             self.progress_bar.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            self.progress_frame.pack_forget()  # 初始时隐藏进度条
             
+            # 显示初始状态
+            self.progress_label.config(text="正在推送...")
+            self.progress_bar['value'] = 0
+            self.root.update()
+
+            # 定义进度回调函数
+            def progress(op_code, cur_count, max_count=None, message=''):
+                if max_count:
+                    percentage = (cur_count / max_count) * 100
+                    self.progress_bar['value'] = percentage
+                    self.progress_label.config(text=f"正在推送... {percentage:.1f}%")
+                    self.root.update()
+
             # 执行推送
             origin = self.repo.remote('origin')
             origin.push(self.repo.active_branch, progress=progress)
