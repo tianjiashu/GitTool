@@ -15,24 +15,24 @@ class GitGUI:
         self.root.title("迷人小赫敏的傻瓜式Git工具")
         self.root.geometry("800x700")
         self.root.configure(bg="#f0f0f0")
-        
+
         # 设置样式
         style = ttk.Style()
         style.configure("TButton", padding=6, relief="flat", background="#2196f3")
         style.configure("TLabel", padding=5, background="#f0f0f0")
         style.configure("TFrame", background="#f0f0f0")
-        
+
         # 创建主框架
         self.main_frame = ttk.Frame(self.root, padding="10")
         self.main_frame.pack(fill=tk.BOTH, expand=True)
-        
+
         # 仓库对象
         self.repo = None
         self.repo_path = None
-        
+
         # 创建UI元素
         self.create_widgets()
-        
+
         # 启动定时检查
         self.check_status_periodically()
 
@@ -41,19 +41,19 @@ class GitGUI:
         self.show_status_message()
         # 每5秒检查一次
         self.root.after(5000, self.check_status_periodically)
-    
+
     def create_widgets(self):
         # 添加头像和欢迎文字区域
         avatar_frame = ttk.Frame(self.main_frame)
         avatar_frame.pack(fill=tk.X, pady=(0, 15))
-        
+
         try:
             # 加载并处理头像
             image = Image.open("zyx.JPG")
             # 调整图片大小为 120x120
             image = image.resize((120, 120), Image.Resampling.LANCZOS)
             photo = ImageTk.PhotoImage(image)
-            
+
             # 创建圆角效果的头像标签
             avatar_label = tk.Label(
                 avatar_frame,
@@ -64,7 +64,7 @@ class GitGUI:
             )
             avatar_label.image = photo
             avatar_label.pack(pady=(10, 5))
-            
+
             # 添加优雅的欢迎文字
             welcome_text = tk.Label(
                 avatar_frame,
@@ -74,30 +74,30 @@ class GitGUI:
                 bg="#f0f0f0"
             )
             welcome_text.pack(pady=(5, 10))
-            
+
         except Exception as e:
             print(f"加载头像失败: {str(e)}")
-        
+
         # 顶部操作区
         top_frame = ttk.Frame(self.main_frame)
         top_frame.pack(fill=tk.X, pady=(0, 10))
-        
+
         # 选择文件夹按钮
         self.select_btn = ttk.Button(top_frame, text="选择文件夹", command=self.select_folder)
         self.select_btn.pack(side=tk.LEFT, padx=5)
-        
+
         # 当前路径显示
         self.path_label = ttk.Label(top_frame, text="当前未选择仓库")
         self.path_label.pack(side=tk.LEFT, padx=5)
-        
+
         # 添加状态显示标签
         self.status_label = tk.Label(self.main_frame, text="", fg="red", font=("黑体", 10, "bold"), justify=tk.LEFT)
         self.status_label.pack(fill=tk.X, pady=5)
-        
+
         # Git操作区
         self.git_frame = ttk.LabelFrame(self.main_frame, text="Git操作", padding=10)
         self.git_frame.pack(fill=tk.X, pady=5)
-        
+
         # Git操作按钮
         ttk.Button(self.git_frame, text="初始化仓库", command=self.init_repo).pack(side=tk.LEFT, padx=5)
         ttk.Button(self.git_frame, text="添加到暂存区", command=self.add_to_stage).pack(side=tk.LEFT, padx=5)
@@ -129,12 +129,12 @@ class GitGUI:
                                        columns=("提交ID", "日期", "描述", "作者"),
                                        show="headings",
                                        style="Custom.Treeview")
-        
+
         self.history_tree.heading("提交ID", text="提交ID", anchor=tk.W)
         self.history_tree.heading("日期", text="日期", anchor=tk.W)
         self.history_tree.heading("描述", text="描述", anchor=tk.W)
         self.history_tree.heading("作者", text="作者", anchor=tk.W)
-        
+
         self.history_tree.column("提交ID", width=80)
         self.history_tree.column("日期", width=150)
         self.history_tree.column("描述", width=320)
@@ -357,23 +357,22 @@ class GitGUI:
         except GitCommandError as e:
             self.progress_frame.pack_forget()  # 发生错误时隐藏进度条
             error_msg = str(e)
-
+            info = ""
             if "Could not read from remote repository" in error_msg:
                 messagebox.showerror("错误",
                     "无法连接到远程仓库！\n可能的原因：\n"
                     "1. 远程仓库地址不正确\n"
                     "2. 没有仓库访问权限\n"
-                    "3. 未配置SSH密钥\n\n"
+                    "3. 未配置SSH密钥\n"
                     "SSH密钥配置教程：https://blog.csdn.net/Serena_tz/article/details/115109206\n")
-                raise e
             else:
-                messagebox.showerror("错误", f"推送失败: {error_msg}")
+                if "unable to access" in error_msg:
+                    info = "该错误为网络链接失败导致，建议重试，或者使用ssh链接"
+                messagebox.showerror("错误", f"推送失败: {error_msg}\n{info}")
         except Exception as e:
             e_str = str(e)
             info = ""
-            if "unable to access" in e_str:
-                info = "该错误为网络链接失败导致，建议重试，或者使用ssh链接"
-            messagebox.showerror("错误", f"推送失败: {e_str}\n{info}")
+            messagebox.showerror("错误", f"推送失败: {e_str}")
             raise e
 
     def update_history(self):
@@ -407,28 +406,28 @@ class GitGUI:
         if not self.repo:
             messagebox.showerror("错误", "请先选择仓库！")
             return
-            
+
         # 创建选择框窗口
         dialog = tk.Toplevel(self.root)
         dialog.title("选择回退版本")
         dialog.geometry("600x400")
         dialog.transient(self.root)
         dialog.grab_set()
-        
+
         # 创建框架
         frame = ttk.Frame(dialog, padding="10")
         frame.pack(fill=tk.BOTH, expand=True)
-        
+
         # 创建单选框变量
         selected_commit = tk.StringVar()
-        
+
         # 获取提交记录
         commits = []
         try:
             for commit in self.repo.iter_commits():
                 commit_date = datetime.fromtimestamp(commit.committed_date)
                 commits.append((commit.hexsha, commit_date, commit.message))
-                
+
                 # 创建单选按钮
                 radio = ttk.Radiobutton(
                     frame,
@@ -437,13 +436,13 @@ class GitGUI:
                     variable=selected_commit
                 )
                 radio.pack(anchor=tk.W, pady=2)
-            
+
             def do_rollback():
                 commit_id = selected_commit.get()
                 if not commit_id:
                     messagebox.showerror("错误", "请选择要回退的版本！")
                     return
-                    
+
                 if messagebox.askyesno("确认", "回退后将丢失该版本之后的所有更改，是否继续？"):
                     try:
                         self.repo.git.reset('--hard', commit_id)
@@ -453,13 +452,13 @@ class GitGUI:
                         dialog.destroy()
                     except Exception as e:
                         messagebox.showerror("错误", f"回退失败: {str(e)}")
-            
+
             # 添加按钮
             btn_frame = ttk.Frame(dialog)
             btn_frame.pack(fill=tk.X, pady=10)
             ttk.Button(btn_frame, text="回退", command=do_rollback).pack(side=tk.LEFT, padx=5)
             ttk.Button(btn_frame, text="取消", command=dialog.destroy).pack(side=tk.LEFT, padx=5)
-            
+
         except Exception as e:
             messagebox.showerror("错误", f"获取提交历史失败: {str(e)}")
             dialog.destroy()
@@ -496,7 +495,7 @@ class GitGUI:
             self.root.update()
 
             messagebox.showinfo("成功", "已成功从远程仓库拉取更新！")
-            
+
             # 更新历史记录和状态
             self.update_history()
             self.show_status_message()
