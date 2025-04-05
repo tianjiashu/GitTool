@@ -18,7 +18,7 @@ class GitGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("迷人小赫敏的傻瓜式Git工具(田佳澍倾情制作！)")
-        self.root.geometry("800x700")
+        self.root.geometry("800x750")
         self.root.configure(bg="#f0f0f0")
         
         # 初始化Git操作对象
@@ -343,6 +343,10 @@ class GitGUI:
 
     def push_to_remote(self):
         """推送到远程仓库"""
+        if self.is_pushing or self.is_pulling:
+            messagebox.showwarning("提示", "有正在进行的操作，请等待完成...")
+            return
+
         if not self.git_ops.repo:
             messagebox.showerror("错误", "请先选择仓库！")
             return
@@ -371,28 +375,50 @@ class GitGUI:
             self.root.update()
 
             def update_progress(progress, message):
+                if not self.is_pushing:  # 如果操作被取消，不更新进度
+                    return
                 self.progress_bar['value'] = progress
                 if message:
                     self.progress_label.config(text=f"正在推送: {message}")
                 self.root.update()
 
-            # 执行推送
-            self.git_ops.push_to_remote(progress_callback=update_progress)
+            def push_thread():
+                try:
+                    self.is_pushing = True
+                    # 执行推送
+                    self.git_ops.push_to_remote(progress_callback=update_progress)
+                    
+                    # 在主线程中更新UI
+                    self.root.after(0, lambda: self.on_push_complete())
+                except Exception as e:
+                    # 在主线程中显示错误
+                    self.root.after(0, lambda: self.on_push_error(e))
+                finally:
+                    self.is_pushing = False
 
-            # 完成后更新进度
-            self.progress_bar['value'] = 100
-            self.progress_label.config(text="推送完成！")
-            self.root.update()
+            # 启动推送线程
+            import threading
+            threading.Thread(target=push_thread, daemon=True).start()
 
-            messagebox.showinfo("成功", "已成功推送到远程仓库！")
-            self.show_status_message()
-
-            # 隐藏进度条
+        except Exception as e:
+            self.is_pushing = False
             self.progress_frame.pack_forget()
+            messagebox.showerror("错误", f"推送失败: {str(e)}")
 
-        except GitCommandError as e:
-            self.progress_frame.pack_forget()
-            error_msg = str(e)
+    def on_push_complete(self):
+        """推送完成后的处理"""
+        self.progress_bar['value'] = 100
+        self.progress_label.config(text="推送完成！")
+        self.root.update()
+        messagebox.showinfo("成功", "已成功推送到远程仓库！")
+        self.show_status_message()
+        self.progress_frame.pack_forget()
+
+    def on_push_error(self, error):
+        """推送错误处理"""
+        self.progress_frame.pack_forget()
+        if isinstance(error, GitCommandError):
+            error_msg = str(error)
             if "Could not read from remote repository" in error_msg:
                 messagebox.showerror("错误",
                     "无法连接到远程仓库！\n可能的原因：\n"
@@ -401,19 +427,22 @@ class GitGUI:
                     "3. 未配置SSH密钥")
             else:
                 messagebox.showerror("错误", f"推送失败: {error_msg}")
-        except Exception as e:
-            self.progress_frame.pack_forget()
-            messagebox.showerror("错误", f"推送失败: {str(e)}")
+        else:
+            messagebox.showerror("错误", f"推送失败: {str(error)}")
 
     def pull_from_remote(self):
         """从远程仓库拉取更新"""
-        if not self.repo:
+        if self.is_pushing or self.is_pulling:
+            messagebox.showwarning("提示", "有正在进行的操作，请等待完成...")
+            return
+
+        if not self.git_ops.repo:
             messagebox.showerror("错误", "请先选择仓库！")
             return
 
         try:
             # 检查是否配置了远程仓库
-            if 'origin' not in [remote.name for remote in self.repo.remotes]:
+            if 'origin' not in self.git_ops.get_remotes():
                 messagebox.showerror("错误", "未配置远程仓库，请先添加远程仓库！")
                 return
 
@@ -422,32 +451,56 @@ class GitGUI:
             self.progress_frame.pack(fill=tk.X, pady=5)
             self.progress_label = ttk.Label(self.progress_frame, text="正在拉取更新...")
             self.progress_label.pack(side=tk.LEFT, padx=5)
-            self.progress_bar = ttk.Progressbar(self.progress_frame, mode='indeterminate')
+            self.progress_bar = ttk.Progressbar(self.progress_frame, mode='determinate')
             self.progress_bar.pack(side=tk.LEFT, fill=tk.X, expand=True)
-            self.progress_bar.start()
             self.root.update()
 
-            # 执行拉取
-            origin = self.repo.remote('origin')
-            origin.pull()
+            def update_progress(progress, message):
+                if not self.is_pulling:  # 如果操作被取消，不更新进度
+                    return
+                self.progress_bar['value'] = progress
+                if message:
+                    self.progress_label.config(text=f"正在拉取: {message}")
+                self.root.update()
 
-            # 完成后更新进度
-            self.progress_bar.stop()
-            self.progress_label.config(text="更新完成！")
-            self.root.update()
+            def pull_thread():
+                try:
+                    self.is_pulling = True
+                    # 执行拉取
+                    self.git_ops.pull_from_remote(progress_callback=update_progress)
+                    
+                    # 在主线程中更新UI
+                    self.root.after(0, lambda: self.on_pull_complete())
+                except Exception as e:
+                    # 在主线程中显示错误
+                    self.root.after(0, lambda: self.on_pull_error(e))
+                finally:
+                    self.is_pulling = False
 
-            messagebox.showinfo("成功", "已成功从远程仓库拉取更新！")
+            # 启动拉取线程
+            import threading
+            threading.Thread(target=pull_thread, daemon=True).start()
 
-            # 更新历史记录和状态
-            self.update_history()
-            self.show_status_message()
-
-            # 隐藏进度条
+        except Exception as e:
+            self.is_pulling = False
             self.progress_frame.pack_forget()
+            messagebox.showerror("错误", f"拉取失败: {str(e)}")
 
-        except GitCommandError as e:
-            self.progress_frame.pack_forget()
-            error_msg = str(e)
+    def on_pull_complete(self):
+        """拉取完成后的处理"""
+        self.progress_bar['value'] = 100
+        self.progress_label.config(text="拉取完成！")
+        self.root.update()
+        messagebox.showinfo("成功", "已成功从远程仓库拉取更新！")
+        self.update_history()
+        self.show_status_message()
+        self.progress_frame.pack_forget()
+
+    def on_pull_error(self, error):
+        """拉取错误处理"""
+        self.progress_frame.pack_forget()
+        if isinstance(error, GitCommandError):
+            error_msg = str(error)
             if "Could not read from remote repository" in error_msg:
                 messagebox.showerror("错误",
                     "无法连接到远程仓库！\n可能的原因：\n"
@@ -455,10 +508,9 @@ class GitGUI:
                     "2. 没有仓库访问权限\n"
                     "3. 未配置SSH密钥")
             else:
-                messagebox.showerror("错误", f"拉取更新失败: {error_msg}")
-        except Exception as e:
-            self.progress_frame.pack_forget()
-            messagebox.showerror("错误", f"拉取更新失败: {str(e)}")
+                messagebox.showerror("错误", f"拉取失败: {error_msg}")
+        else:
+            messagebox.showerror("错误", f"拉取失败: {str(error)}")
 
 if __name__ == "__main__":
     root = tk.Tk()
