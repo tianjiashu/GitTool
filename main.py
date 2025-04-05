@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, simpledialog
+from PIL import Image, ImageTk  # 添加PIL支持
 import os
 from datetime import datetime, timedelta
 import subprocess
@@ -12,7 +13,7 @@ class GitGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("迷人小赫敏的傻瓜式Git工具")
-        self.root.geometry("800x600")
+        self.root.geometry("800x700")
         self.root.configure(bg="#f0f0f0")
         
         # 设置样式
@@ -42,6 +43,41 @@ class GitGUI:
         self.root.after(5000, self.check_status_periodically)
     
     def create_widgets(self):
+        # 添加头像和欢迎文字区域
+        avatar_frame = ttk.Frame(self.main_frame)
+        avatar_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        try:
+            # 加载并处理头像
+            image = Image.open("zyx.JPG")
+            # 调整图片大小为 120x120
+            image = image.resize((120, 120), Image.Resampling.LANCZOS)
+            photo = ImageTk.PhotoImage(image)
+            
+            # 创建圆角效果的头像标签
+            avatar_label = tk.Label(
+                avatar_frame,
+                image=photo,
+                bg="#f0f0f0",
+                bd=2,
+                relief="groove"
+            )
+            avatar_label.image = photo
+            avatar_label.pack(pady=(10, 5))
+            
+            # 添加优雅的欢迎文字
+            welcome_text = tk.Label(
+                avatar_frame,
+                text="你好！迷人小赫敏！",
+                font=("华文行楷", 18),
+                fg="#FF69B4",  # 温柔的粉色
+                bg="#f0f0f0"
+            )
+            welcome_text.pack(pady=(5, 10))
+            
+        except Exception as e:
+            print(f"加载头像失败: {str(e)}")
+        
         # 顶部操作区
         top_frame = ttk.Frame(self.main_frame)
         top_frame.pack(fill=tk.X, pady=(0, 10))
