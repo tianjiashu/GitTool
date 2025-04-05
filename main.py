@@ -12,7 +12,7 @@ from git import Repo, GitCommandError
 class GitGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("迷人小赫敏的傻瓜式Git工具")
+        self.root.title("迷人小赫敏的傻瓜式Git工具(田佳澍倾情制作！)")
         self.root.geometry("800x700")
         self.root.configure(bg="#f0f0f0")
 
