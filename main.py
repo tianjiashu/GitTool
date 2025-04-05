@@ -1,5 +1,11 @@
 import os
-os.environ['GIT_PYTHON_GIT_EXECUTABLE'] = "F:\Git\cmd\git.exe"
+import configparser
+
+# 读取配置文件
+config = configparser.ConfigParser()
+config.read('config.ini')
+os.environ['GIT_PYTHON_GIT_EXECUTABLE'] = config.get('Git', 'executable_path')
+
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, simpledialog
 from PIL import Image, ImageTk  # 添加PIL支持
