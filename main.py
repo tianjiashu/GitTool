@@ -357,6 +357,7 @@ class GitGUI:
         except GitCommandError as e:
             self.progress_frame.pack_forget()  # 发生错误时隐藏进度条
             error_msg = str(e)
+
             if "Could not read from remote repository" in error_msg:
                 messagebox.showerror("错误",
                     "无法连接到远程仓库！\n可能的原因：\n"
@@ -364,6 +365,7 @@ class GitGUI:
                     "2. 没有仓库访问权限\n"
                     "3. 未配置SSH密钥\n\n"
                     "SSH密钥配置教程：https://blog.csdn.net/Serena_tz/article/details/115109206\n")
+                raise e
             else:
                 messagebox.showerror("错误", f"推送失败: {error_msg}")
         except Exception as e:
