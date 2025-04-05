@@ -260,12 +260,33 @@ class GitGUI:
                 else:
                     return
 
+            # 添加进度条
+            self.progress_frame = ttk.Frame(self.main_frame)
+            self.progress_frame.pack(fill=tk.X, pady=5)
+            self.progress_label = ttk.Label(self.progress_frame, text="")
+            self.progress_label.pack(side=tk.LEFT, padx=5)
+            self.progress_bar = ttk.Progressbar(self.progress_frame, mode='determinate', length=300)
+            self.progress_bar.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            self.progress_frame.pack_forget()  # 初始时隐藏进度条
+            
             # 执行推送
             origin = self.repo.remote('origin')
-            origin.push(self.repo.active_branch)
+            origin.push(self.repo.active_branch, progress=progress)
+            
+            # 完成后更新进度
+            self.progress_bar['value'] = 100
+            self.progress_label.config(text="推送完成！")
+            self.root.update()
+            
             messagebox.showinfo("成功", "推送成功！")
-            self.show_status_message()  # 添加状态检查
+            
+            # 隐藏进度条
+            self.progress_frame.pack_forget()
+            
+            self.show_status_message()
+            
         except GitCommandError as e:
+            self.progress_frame.pack_forget()  # 发生错误时隐藏进度条
             error_msg = str(e)
             if "Could not read from remote repository" in error_msg:
                 messagebox.showerror("错误", 
