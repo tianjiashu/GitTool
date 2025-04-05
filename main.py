@@ -179,11 +179,52 @@ class GitGUI:
             return
         
         try:
+            # 检查是否配置了远程仓库
+            if 'origin' not in [remote.name for remote in self.repo.remotes]:
+                messagebox.showerror("错误", "未配置远程仓库，请先添加远程仓库！")
+                return
+
+            # 检查是否有提交记录
+            if not any(self.repo.iter_commits()):
+                messagebox.showerror("错误", "仓库中没有提交记录，请先提交更改！")
+                return
+
+            # 检查Git配置
+            try:
+                user_name = self.repo.git.config('user.name')
+                user_email = self.repo.git.config('user.email')
+            except:
+                if messagebox.askyesno("提示", "未配置Git用户信息，是否现在配置？"):
+                    name = simpledialog.askstring("配置", "请输入您的用户名:")
+                    email = simpledialog.askstring("配置", "请输入您的邮箱:")
+                    if name and email:
+                        self.repo.git.config('--global', 'user.name', name)
+                        self.repo.git.config('--global', 'user.email', email)
+                    else:
+                        return
+                else:
+                    return
+
+            # 执行推送
             origin = self.repo.remote('origin')
             origin.push(self.repo.active_branch)
             messagebox.showinfo("成功", "推送成功！")
+            
+        except GitCommandError as e:
+            error_msg = str(e)
+            if "Could not read from remote repository" in error_msg:
+                messagebox.showerror("错误", 
+                    "无法连接到远程仓库！\n可能的原因：\n"
+                    "1. 远程仓库地址不正确\n"
+                    "2. 没有仓库访问权限\n"
+                    "3. 未配置SSH密钥\n\n"
+                    "SSH密钥配置教程：https://blog.csdn.net/Serena_tz/article/details/115109206\n"
+                    )
+            else:
+                messagebox.showerror("错误", f"推送失败: {error_msg}")
         except Exception as e:
             messagebox.showerror("错误", f"推送失败: {str(e)}")
+            raise e
 
     def update_history(self):
         if not self.repo:
