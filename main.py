@@ -67,6 +67,7 @@ class GitGUI:
         ttk.Button(self.git_frame, text="添加到暂存区", command=self.add_to_stage).pack(side=tk.LEFT, padx=5)
         ttk.Button(self.git_frame, text="提交更改", command=self.commit_changes).pack(side=tk.LEFT, padx=5)
         ttk.Button(self.git_frame, text="推送到远程", command=self.push_to_remote).pack(side=tk.LEFT, padx=5)
+        ttk.Button(self.git_frame, text="拉取更新", command=self.pull_from_remote).pack(side=tk.LEFT, padx=5)
         ttk.Button(self.git_frame, text="版本回退", command=self.show_rollback_dialog).pack(side=tk.LEFT, padx=5)
 
         # GitHub设置区
@@ -147,6 +148,21 @@ class GitGUI:
             self.status_label.config(text=status_msg)
             # messagebox.showinfo("仓库状态", status_msg)
 
+    def update_remote_url(self):
+        """更新远程仓库链接显示"""
+        try:
+            if self.repo and self.repo.remotes:
+                origin = self.repo.remote('origin')
+                if origin.urls:
+                    remote_url = next(origin.urls)
+                    self.github_url.set(remote_url)
+                else:
+                    self.github_url.set("")
+            else:
+                self.github_url.set("")
+        except Exception:
+            self.github_url.set("")
+
     def select_folder(self):
         folder = filedialog.askdirectory()
         if folder:
@@ -165,8 +181,9 @@ class GitGUI:
 
                 self.repo_path = folder
                 self.path_label.config(text=f"当前仓库: {folder}")
+                self.update_remote_url()  # 更新远程仓库链接
                 self.update_history()
-                self.show_status_message()  # 添加状态检查
+                self.show_status_message()
 
             except Exception as e:
                 messagebox.showerror("错误", f"操作失败: {str(e)}")
@@ -177,8 +194,9 @@ class GitGUI:
             return
         try:
             self.repo = Repo.init(self.repo_path)
+            self.update_remote_url()  # 更新远程仓库链接
             messagebox.showinfo("成功", "Git仓库初始化成功！")
-            self.show_status_message()  # 添加状态检查
+            self.show_status_message()
         except Exception as e:
             messagebox.showerror("错误", f"初始化失败: {str(e)}")
 
@@ -407,6 +425,61 @@ class GitGUI:
         except Exception as e:
             messagebox.showerror("错误", f"获取提交历史失败: {str(e)}")
             dialog.destroy()
+
+    def pull_from_remote(self):
+        """从远程仓库拉取更新"""
+        if not self.repo:
+            messagebox.showerror("错误", "请先选择仓库！")
+            return
+
+        try:
+            # 检查是否配置了远程仓库
+            if 'origin' not in [remote.name for remote in self.repo.remotes]:
+                messagebox.showerror("错误", "未配置远程仓库，请先添加远程仓库！")
+                return
+
+            # 显示进度条
+            self.progress_frame = ttk.Frame(self.main_frame)
+            self.progress_frame.pack(fill=tk.X, pady=5)
+            self.progress_label = ttk.Label(self.progress_frame, text="正在拉取更新...")
+            self.progress_label.pack(side=tk.LEFT, padx=5)
+            self.progress_bar = ttk.Progressbar(self.progress_frame, mode='indeterminate')
+            self.progress_bar.pack(side=tk.LEFT, fill=tk.X, expand=True)
+            self.progress_bar.start()
+            self.root.update()
+
+            # 执行拉取
+            origin = self.repo.remote('origin')
+            origin.pull()
+
+            # 完成后更新进度
+            self.progress_bar.stop()
+            self.progress_label.config(text="更新完成！")
+            self.root.update()
+
+            messagebox.showinfo("成功", "已成功从远程仓库拉取更新！")
+            
+            # 更新历史记录和状态
+            self.update_history()
+            self.show_status_message()
+
+            # 隐藏进度条
+            self.progress_frame.pack_forget()
+
+        except GitCommandError as e:
+            self.progress_frame.pack_forget()
+            error_msg = str(e)
+            if "Could not read from remote repository" in error_msg:
+                messagebox.showerror("错误",
+                    "无法连接到远程仓库！\n可能的原因：\n"
+                    "1. 远程仓库地址不正确\n"
+                    "2. 没有仓库访问权限\n"
+                    "3. 未配置SSH密钥")
+            else:
+                messagebox.showerror("错误", f"拉取更新失败: {error_msg}")
+        except Exception as e:
+            self.progress_frame.pack_forget()
+            messagebox.showerror("错误", f"拉取更新失败: {str(e)}")
 
 if __name__ == "__main__":
     root = tk.Tk()
