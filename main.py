@@ -31,6 +31,15 @@ class GitGUI:
         
         # 创建UI元素
         self.create_widgets()
+        
+        # 启动定时检查
+        self.check_status_periodically()
+
+    def check_status_periodically(self):
+        """定期检查仓库状态"""
+        self.show_status_message()
+        # 每5秒检查一次
+        self.root.after(5000, self.check_status_periodically)
     
     def create_widgets(self):
         # 顶部操作区
