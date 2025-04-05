@@ -383,16 +383,17 @@ class GitGUI:
                 self.root.update()
 
             def push_thread():
+                error = None
                 try:
                     self.is_pushing = True
                     # 执行推送
                     self.git_ops.push_to_remote(progress_callback=update_progress)
-                    
                     # 在主线程中更新UI
-                    self.root.after(0, lambda: self.on_push_complete())
+                    self.root.after(0, self.on_push_complete)
                 except Exception as e:
+                    error = e
                     # 在主线程中显示错误
-                    self.root.after(0, lambda: self.on_push_error(e))
+                    self.root.after(0, lambda: self.on_push_error(error))
                 finally:
                     self.is_pushing = False
 
@@ -468,12 +469,12 @@ class GitGUI:
                     self.is_pulling = True
                     # 执行拉取
                     self.git_ops.pull_from_remote(progress_callback=update_progress)
-                    
                     # 在主线程中更新UI
-                    self.root.after(0, lambda: self.on_pull_complete())
+                    self.root.after(0, self.on_pull_complete)
                 except Exception as e:
+                    error = e
                     # 在主线程中显示错误
-                    self.root.after(0, lambda: self.on_pull_error(e))
+                    self.root.after(0, lambda: self.on_pull_error(error))
                 finally:
                     self.is_pulling = False
 
