@@ -15,7 +15,7 @@ class GitGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("迷人小赫敏的傻瓜式Git工具(田佳澍倾情制作！)")
-        self.root.geometry("800x750")
+        self.root.geometry("800x780")
         self.root.configure(bg="#f0f0f0")
 
         # 初始化Git操作对象
@@ -339,6 +339,35 @@ class GitGUI:
         ttk.Button(btn_frame, text="回退", command=do_rollback).pack(side=tk.RIGHT, padx=5)
         ttk.Button(btn_frame, text="取消", command=dialog.destroy).pack(side=tk.RIGHT, padx=5)
 
+    def show_ssh_error_dialog(self):
+        """显示SSH错误对话框"""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("错误")
+        dialog.geometry("400x250")
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        # 错误信息
+        message_frame = ttk.Frame(dialog, padding="20")
+        message_frame.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(message_frame, text="无法连接到远程仓库！", font=("微软雅黑", 11, "bold")).pack(pady=(0, 10))
+        ttk.Label(message_frame, text="可能的原因：").pack(anchor=tk.W)
+        ttk.Label(message_frame, text="1. 远程仓库地址不正确").pack(anchor=tk.W)
+        ttk.Label(message_frame, text="2. 没有仓库访问权限").pack(anchor=tk.W)
+        ttk.Label(message_frame, text="3. 未配置SSH密钥").pack(anchor=tk.W)
+
+        def open_tutorial():
+            import webbrowser
+            webbrowser.open("https://blog.csdn.net/I_loveCong/article/details/139862670")
+
+        # 按钮框架
+        button_frame = ttk.Frame(dialog, padding="10")
+        button_frame.pack(fill=tk.X, side=tk.BOTTOM)
+
+        ttk.Button(button_frame, text="查看配置教程", command=open_tutorial).pack(side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="确定", command=dialog.destroy).pack(side=tk.RIGHT, padx=5)
+
     def push_to_remote(self):
         """推送到远程仓库"""
         if self.is_pushing or self.is_pulling:
@@ -414,11 +443,7 @@ class GitGUI:
         if isinstance(error, GitCommandError):
             error_msg = str(error)
             if "Could not read from remote repository" in error_msg:
-                messagebox.showerror("错误",
-                                     "无法连接到远程仓库！\n可能的原因：\n"
-                                     "1. 远程仓库地址不正确\n"
-                                     "2. 没有仓库访问权限\n"
-                                     "3. 未配置SSH密钥")
+                self.show_ssh_error_dialog()
             else:
                 messagebox.showerror("错误", f"推送失败: {error_msg}")
         else:
@@ -492,11 +517,7 @@ class GitGUI:
         if isinstance(error, GitCommandError):
             error_msg = str(error)
             if "Could not read from remote repository" in error_msg:
-                messagebox.showerror("错误",
-                                     "无法连接到远程仓库！\n可能的原因：\n"
-                                     "1. 远程仓库地址不正确\n"
-                                     "2. 没有仓库访问权限\n"
-                                     "3. 未配置SSH密钥")
+                self.show_ssh_error_dialog()
             else:
                 messagebox.showerror("错误", f"拉取失败: {error_msg}")
         else:

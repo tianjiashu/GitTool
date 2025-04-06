@@ -25,7 +25,10 @@ def require_repo(func):
     """检查是否选择仓库的装饰器"""
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
-        if not self.repo and not self.git_ops.repo:
+        if hasattr(self, 'repo') and not self.repo:
+            messagebox.showerror("错误", "请先选择仓库！")
+            return
+        elif hasattr(self, 'git_ops') and not self.git_ops.repo:
             messagebox.showerror("错误", "请先选择仓库！")
             return
         return func(self, *args, **kwargs)
