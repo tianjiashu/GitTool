@@ -62,20 +62,42 @@ class GitOperations:
         """添加未暂存的文件到暂存区"""
         # 获取未暂存的文件列表
         untracked = self.repo.untracked_files  # 未跟踪的文件
-        modified = [item.a_path for item in self.repo.index.diff(None)]  # 已修改但未暂存的文件
+        diff_index = self.repo.index.diff(None)  # 获取工作区和暂存区的差异
         
-        # 添加所有未暂存的文件
+        # 分类处理不同状态的文件
+        modified = []  # 修改的文件
+        deleted = []   # 删除的文件
+        renamed = []   # 重命名/移动的文件
+        
+        for diff in diff_index:
+            if diff.deleted_file:
+                deleted.append(diff.a_path)
+            elif diff.renamed:
+                renamed.append((diff.a_path, diff.b_path))
+            else:
+                modified.append(diff.a_path)
+        
+        # 添加未跟踪的新文件
         if untracked:
-            # 过滤出存在的文件
             existing_untracked = [f for f in untracked if os.path.exists(os.path.join(self.repo_path, f))]
             if existing_untracked:
                 self.repo.index.add(existing_untracked)
-                
+        
+        # 添加修改的文件
         if modified:
-            # 过滤出存在的文件
             existing_modified = [f for f in modified if os.path.exists(os.path.join(self.repo_path, f))]
             if existing_modified:
                 self.repo.index.add(existing_modified)
+        
+        # 处理删除的文件
+        if deleted:
+            self.repo.index.remove(deleted, working_tree=False)
+        
+        # 处理重命名/移动的文件
+        if renamed:
+            for old_path, new_path in renamed:
+                self.repo.index.remove([old_path], working_tree=False)
+                self.repo.index.add([new_path])
 
     @require_repo
     def commit_changes(self, message):
