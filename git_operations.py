@@ -55,8 +55,16 @@ class GitOperations:
 
     @require_repo
     def add_to_stage(self):
-        """添加文件到暂存区"""
-        self.repo.index.add('*')
+        """添加未暂存的文件到暂存区"""
+        # 获取未暂存的文件列表
+        untracked = self.repo.untracked_files  # 未跟踪的文件
+        modified = [item.a_path for item in self.repo.index.diff(None)]  # 已修改但未暂存的文件
+        
+        # 添加所有未暂存的文件
+        if untracked:
+            self.repo.index.add(untracked)
+        if modified:
+            self.repo.index.add(modified)
 
     @require_repo
     def commit_changes(self, message):
