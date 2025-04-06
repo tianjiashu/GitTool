@@ -1,24 +1,14 @@
 import os
-import configparser
-
-
-# 读取配置文件
+import threading
 from utils import handle_exception, require_repo
-
-config = configparser.ConfigParser()
-config.read('config.ini')
-os.environ['GIT_PYTHON_GIT_EXECUTABLE'] = config.get('Git', 'executable_path')
 
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, simpledialog
 from PIL import Image, ImageTk  # 添加PIL支持
-
 from datetime import datetime, timedelta
-
 from git_operations import GitOperations
-
 # 检查并设置Git环境
-from git import Repo, GitCommandError
+from git import GitCommandError
 
 
 class GitGUI:
@@ -84,18 +74,31 @@ class GitGUI:
             avatar_label.image = photo
             avatar_label.pack(pady=(10, 5))
 
-            # 添加优雅的欢迎文字
-            welcome_text = tk.Label(
-                avatar_frame,
-                text="你好！迷人小赫敏！",
-                font=("华文行楷", 18),
-                fg="#FF69B4",  # 温柔的粉色
-                bg="#f0f0f0"
-            )
-            welcome_text.pack(pady=(5, 10))
-
         except Exception as e:
-            print(f"加载头像失败: {str(e)}")
+            # 创建默认的黑色背景标签
+            default_label = tk.Label(
+                avatar_frame,
+                text="未获取到图像路径 zyx.JPG",
+                width=16,  # 设置宽度
+                height=7,  # 设置高度
+                bg="black",  # 黑色背景
+                fg="white",  # 白色文字
+                font=("微软雅黑", 10),
+                bd=2,
+                relief="groove"
+            )
+            default_label.pack(pady=(10, 5))
+            # print(f"加载头像失败: {str(e)}")
+
+        # 添加优雅的欢迎文字
+        welcome_text = tk.Label(
+            avatar_frame,
+            text="你好！迷人小赫敏！",
+            font=("华文行楷", 18),
+            fg="#FF69B4",
+            bg="#f0f0f0"
+        )
+        welcome_text.pack(pady=(5, 10))
 
         # 顶部操作区
         top_frame = ttk.Frame(self.main_frame)
@@ -390,7 +393,6 @@ class GitGUI:
                     self.is_pushing = False
 
             # 启动推送线程
-            import threading
             threading.Thread(target=push_thread, daemon=True).start()
 
         except Exception as e:
@@ -468,7 +470,6 @@ class GitGUI:
                     self.is_pulling = False
 
             # 启动拉取线程
-            import threading
             threading.Thread(target=pull_thread, daemon=True).start()
 
         except Exception as e:

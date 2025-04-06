@@ -1,11 +1,14 @@
-import functools
+# 设置 Git 可执行文件路径
+from utils import handle_exception, require_repo, find_git_executable
+import os
 from tkinter import messagebox
-
-from git import Repo, GitCommandError
-from datetime import datetime, timedelta
-
-from utils import handle_exception, require_repo
-
+git_exe = find_git_executable()
+if git_exe:
+    os.environ['GIT_PYTHON_GIT_EXECUTABLE'] = git_exe
+else:
+    messagebox.showerror("错误", "未找到 Git 可执行文件，请确保已安装 Git")
+from git import Repo
+from datetime import datetime
 
 class GitOperations:
     def __init__(self):
@@ -62,9 +65,16 @@ class GitOperations:
         
         # 添加所有未暂存的文件
         if untracked:
-            self.repo.index.add(untracked)
+            # 过滤出存在的文件
+            existing_untracked = [f for f in untracked if os.path.exists(os.path.join(self.repo_path, f))]
+            if existing_untracked:
+                self.repo.index.add(existing_untracked)
+                
         if modified:
-            self.repo.index.add(modified)
+            # 过滤出存在的文件
+            existing_modified = [f for f in modified if os.path.exists(os.path.join(self.repo_path, f))]
+            if existing_modified:
+                self.repo.index.add(existing_modified)
 
     @require_repo
     def commit_changes(self, message):
