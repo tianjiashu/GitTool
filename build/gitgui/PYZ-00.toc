@@ -1139,6 +1139,7 @@
   ('urllib.parse', 'g:\\python\\lib\\urllib\\parse.py', 'PYMODULE'),
   ('urllib.request', 'g:\\python\\lib\\urllib\\request.py', 'PYMODULE'),
   ('urllib.response', 'g:\\python\\lib\\urllib\\response.py', 'PYMODULE'),
+  ('utils', 'C:\\Users\\Administrator\\Desktop\\GitGUI\\utils.py', 'PYMODULE'),
   ('uu', 'g:\\python\\lib\\uu.py', 'PYMODULE'),
   ('uuid', 'g:\\python\\lib\\uuid.py', 'PYMODULE'),
   ('webbrowser', 'g:\\python\\lib\\webbrowser.py', 'PYMODULE'),
