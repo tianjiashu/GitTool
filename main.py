@@ -123,7 +123,7 @@ class GitGUI:
         self.git_frame.pack(fill=tk.X, pady=5)
 
         # Git操作按钮
-        ttk.Button(self.git_frame, text="初始化仓库", command=self.init_repo).pack(side=tk.LEFT, padx=5)
+        # ttk.Button(self.git_frame, text="初始化仓库", command=self.init_repo).pack(side=tk.LEFT, padx=5)
         ttk.Button(self.git_frame, text="添加到暂存区", command=self.add_to_stage).pack(side=tk.LEFT, padx=5)
         ttk.Button(self.git_frame, text="提交更改", command=self.commit_changes).pack(side=tk.LEFT, padx=5)
         ttk.Button(self.git_frame, text="推送到远程", command=self.push_to_remote).pack(side=tk.LEFT, padx=5)
@@ -131,7 +131,7 @@ class GitGUI:
         ttk.Button(self.git_frame, text="版本回退", command=self.show_rollback_dialog).pack(side=tk.LEFT, padx=5)
 
         # GitHub设置区
-        self.github_frame = ttk.LabelFrame(self.main_frame, text="GitHub设置", padding=10)
+        self.github_frame = ttk.LabelFrame(self.main_frame, text="GitHub设置(建议使用ssh链接)", padding=10)
         self.github_frame.pack(fill=tk.X, pady=5)
 
         ttk.Label(self.github_frame, text="GitHub仓库链接:").pack(side=tk.LEFT)
