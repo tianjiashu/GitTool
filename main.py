@@ -287,7 +287,7 @@ class GitGUI:
 
     def show_rollback_dialog(self):
         """显示版本回退选择框"""
-        if not self.repo:
+        if not self.git_ops.repo:
             messagebox.showerror("错误", "请先选择仓库！")
             return
 
@@ -308,7 +308,7 @@ class GitGUI:
         # 获取提交记录
         commits = []
         try:
-            for commit in self.repo.iter_commits():
+            for commit in self.git_ops.repo.iter_commits():
                 commit_date = datetime.fromtimestamp(commit.committed_date)
                 commits.append((commit.hexsha, commit_date, commit.message))
 
@@ -329,7 +329,7 @@ class GitGUI:
 
                 if messagebox.askyesno("确认", "回退后将丢失该版本之后的所有更改，是否继续？"):
                     try:
-                        self.repo.git.reset('--hard', commit_id)
+                        self.git_ops.repo.git.reset('--hard', commit_id)
                         messagebox.showinfo("成功", f"已成功回退到提交 {commit_id[:7]}")
                         self.update_history()
                         self.show_status_message()
