@@ -1,7 +1,10 @@
 import os
 import configparser
 
+
 # 读取配置文件
+from utils import handle_exception, require_repo
+
 config = configparser.ConfigParser()
 config.read('config.ini')
 os.environ['GIT_PYTHON_GIT_EXECUTABLE'] = config.get('Git', 'executable_path')
@@ -11,10 +14,8 @@ from tkinter import ttk, filedialog, messagebox, simpledialog
 from PIL import Image, ImageTk  # 添加PIL支持
 
 from datetime import datetime, timedelta
-import subprocess
 
 from git_operations import GitOperations
-
 
 # 检查并设置Git环境
 from git import Repo, GitCommandError
@@ -26,24 +27,24 @@ class GitGUI:
         self.root.title("迷人小赫敏的傻瓜式Git工具(田佳澍倾情制作！)")
         self.root.geometry("800x750")
         self.root.configure(bg="#f0f0f0")
-        
+
         # 初始化Git操作对象
         self.git_ops = GitOperations()
-        
+
         # 添加线程状态标志
         self.is_pushing = False
         self.is_pulling = False
-        
+
         # 设置样式
         self.setup_styles()
-        
+
         # 创建主框架
         self.main_frame = ttk.Frame(self.root, padding="10")
         self.main_frame.pack(fill=tk.BOTH, expand=True)
-        
+
         # 创建UI元素
         self.create_widgets()
-        
+
         # 启动定时检查
         self.check_status_periodically()
 
@@ -53,12 +54,6 @@ class GitGUI:
         style.configure("TButton", padding=6, relief="flat", background="#2196f3")
         style.configure("TLabel", padding=5, background="#f0f0f0")
         style.configure("TFrame", background="#f0f0f0")
-        
-        # 删除以下重复的代码
-        # self.repo = None
-        # self.repo_path = None
-        # self.create_widgets()
-        # self.check_status_periodically()
 
     def check_status_periodically(self):
         """定期检查仓库状态"""
@@ -149,19 +144,30 @@ class GitGUI:
         ttk.Button(self.github_frame, text="添加远程仓库", command=self.add_remote).pack(side=tk.LEFT)
 
         # 历史记录区
-        history_frame = ttk.LabelFrame(self.main_frame, text="提交历史记录（近一个月）", padding=10)
-        history_frame.pack(fill=tk.X, pady=5)  # 改为 fill=tk.X，不再 expand
+        history_frame = ttk.LabelFrame(self.main_frame, text="提交历史记录", padding=10)
+        history_frame.pack(fill=tk.X, pady=5)
+
+        # 添加时间范围选择
+        time_frame = ttk.Frame(history_frame)
+        time_frame.pack(fill=tk.X, pady=(0, 5))
+
+        self.time_range = tk.StringVar(value="近七天")  # 默认选择近七天
+        ranges = ["近三小时", "近12小时", "今天", "近七天", "近一个月"]
+        for r in ranges:
+            ttk.Radiobutton(time_frame, text=r, value=r,
+                            variable=self.time_range,
+                            command=self.update_history).pack(side=tk.LEFT, padx=5)
 
         # 创建带滚动条的树形视图
         self.tree_frame = ttk.Frame(history_frame)
-        self.tree_frame.pack(fill=tk.BOTH)  # 移除 expand=True
+        self.tree_frame.pack(fill=tk.BOTH)
 
         # 修改历史记录视图
         self.history_tree = ttk.Treeview(self.tree_frame,
-                                       columns=("提交ID", "日期", "描述", "作者"),
-                                       show="headings",
-                                       style="Custom.Treeview",
-                                       height=8)  # 添加固定高度，显示8行
+                                         columns=("提交ID", "日期", "描述", "作者"),
+                                         show="headings",
+                                         style="Custom.Treeview",
+                                         height=8)  # 添加固定高度，显示8行
 
         self.history_tree.heading("提交ID", text="提交ID", anchor=tk.W)
         self.history_tree.heading("日期", text="日期", anchor=tk.W)
@@ -180,109 +186,93 @@ class GitGUI:
         self.history_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-    def check_repo_status(self):
-        """检查仓库状态并返回提示信息"""
-        return self.git_ops.check_repo_status()
-
     def show_status_message(self):
         """显示状态信息"""
         status_msg = self.git_ops.check_repo_status()
         if status_msg:
             self.status_label.config(text=status_msg)
 
+    @handle_exception("选择文件夹失败")
     def select_folder(self):
         folder = filedialog.askdirectory()
         if folder:
-            try:
-                # 检查是否为Git仓库
-                is_repo = os.path.exists(os.path.join(folder, '.git'))
+            # 检查是否为Git仓库
+            is_repo = os.path.exists(os.path.join(folder, '.git'))
 
-                if not is_repo:
-                    if messagebox.askyesno("提示", "当前文件夹不是仓库，是否初始化为仓库？"):
-                        self.git_ops.init_repo(folder)
-                        messagebox.showinfo("成功", "Git仓库初始化成功！")
-                    else:
-                        return
+            if not is_repo:
+                if messagebox.askyesno("提示", "当前文件夹不是仓库，是否初始化为仓库？"):
+                    self.git_ops.init_repo(folder)
+                    messagebox.showinfo("成功", "Git仓库初始化成功！")
                 else:
-                    self.git_ops.load_repo(folder)
+                    return
+            else:
+                self.git_ops.load_repo(folder)
 
-                self.path_label.config(text=f"当前仓库: {folder}")
-                self.update_remote_url()
-                self.update_history()
-                self.show_status_message()
-
-            except Exception as e:
-                messagebox.showerror("错误", f"操作失败: {str(e)}")
-
-    def init_repo(self):
-        if not self.git_ops.repo_path:
-            messagebox.showerror("错误", "请先选择文件夹！")
-            return
-        try:
-            self.git_ops.init_repo(self.git_ops.repo_path)
+            self.path_label.config(text=f"当前仓库: {folder}")
             self.update_remote_url()
-            messagebox.showinfo("成功", "Git仓库初始化成功！")
+            self.update_history()
             self.show_status_message()
-        except Exception as e:
-            messagebox.showerror("错误", f"初始化失败: {str(e)}")
 
+    @handle_exception("初始化仓库失败")
+    def init_repo(self):
+        self.git_ops.init_repo(self.git_ops.repo_path)
+        self.update_remote_url()
+        messagebox.showinfo("成功", "Git仓库初始化成功！")
+        self.show_status_message()
+
+    @handle_exception("添加到暂存区失败")
     def add_to_stage(self):
-        if not self.git_ops.repo:
-            messagebox.showerror("错误", "请先选择仓库！")
-            return
-        try:
-            self.git_ops.add_to_stage()
-            messagebox.showinfo("成功", "文件已添加到暂存区！")
-            self.show_status_message()
-        except Exception as e:
-            messagebox.showerror("错误", f"添加失败: {str(e)}")
+        self.git_ops.add_to_stage()
+        messagebox.showinfo("成功", "文件已添加到暂存区！")
+        self.show_status_message()
 
+    @handle_exception("提交失败")
     def commit_changes(self):
-        if not self.git_ops.repo:
-            messagebox.showerror("错误", "请先选择仓库！")
-            return
-
         commit_message = simpledialog.askstring("提交", "请输入提交信息:")
         if commit_message:
-            try:
-                self.git_ops.commit_changes(commit_message)
-                messagebox.showinfo("成功", "更改已提交！")
-                self.update_history()
-                self.show_status_message()
-            except Exception as e:
-                messagebox.showerror("错误", f"提交失败: {str(e)}")
+            self.git_ops.commit_changes(commit_message)
+            messagebox.showinfo("成功", "更改已提交！")
+            self.update_history()
+            self.show_status_message()
 
+    @handle_exception("添加远程仓库失败")
     def add_remote(self):
-        if not self.git_ops.repo:
-            messagebox.showerror("错误", "请先选择仓库！")
-            return
-
         github_url = self.github_url.get()
         if not github_url:
             messagebox.showerror("错误", "请输入GitHub仓库链接！")
             return
-
-        try:
-            self.git_ops.add_remote(github_url)
-            messagebox.showinfo("成功", "远程仓库添加成功！")
-            self.show_status_message()
-        except Exception as e:
-            messagebox.showerror("错误", f"添加远程仓库失败: {str(e)}")
+        self.git_ops.add_remote(github_url)
+        messagebox.showinfo("成功", "远程仓库添加成功！")
+        self.show_status_message()
 
     def update_remote_url(self):
         """更新远程仓库链接显示"""
         remote_url = self.git_ops.get_remote_url()
         self.github_url.set(remote_url)
 
+    @handle_exception("更新历史记录")
     def update_history(self):
-        """更新历史记录"""
-        try:
-            # 清空现有记录
+        # 清空现有记录
             for item in self.history_tree.get_children():
                 self.history_tree.delete(item)
 
+            # 获取时间范围
+            time_range = self.time_range.get()
+            now = datetime.now()
+
+            if time_range == "近三小时":
+                since = now - timedelta(hours=3)
+            elif time_range == "近12小时":
+                since = now - timedelta(hours=12)
+            elif time_range == "今天":
+                since = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            elif time_range == "近七天":
+                since = now - timedelta(days=7)
+            else:  # 近一个月
+                since = now - timedelta(days=30)
+
             # 获取提交历史
-            history = self.git_ops.get_commit_history()
+            history = self.git_ops.get_commit_history(since=since)
             for commit in history:
                 self.history_tree.insert("", 0, values=(
                     commit['id'][:7],
@@ -290,15 +280,10 @@ class GitGUI:
                     commit['message'],
                     commit['author']
                 ))
-        except Exception:
-            pass
-
+    @require_repo
+    @handle_exception("获取提交历史失败")
     def show_rollback_dialog(self):
         """显示版本回退选择框"""
-        if not self.git_ops.repo:
-            messagebox.showerror("错误", "请先选择仓库！")
-            return
-
         # 创建选择框窗口
         dialog = tk.Toplevel(self.root)
         dialog.title("选择回退版本")
@@ -315,54 +300,47 @@ class GitGUI:
 
         # 获取提交记录
         commits = []
-        try:
-            for commit in self.git_ops.repo.iter_commits():
-                commit_date = datetime.fromtimestamp(commit.committed_date)
-                commits.append((commit.hexsha, commit_date, commit.message))
 
-                # 创建单选按钮
-                radio = ttk.Radiobutton(
-                    frame,
-                    text=f"{commit_date.strftime('%Y-%m-%d %H:%M')} - {commit.message}",
-                    value=commit.hexsha,
-                    variable=selected_commit
-                )
-                radio.pack(anchor=tk.W, pady=2)
+        for commit in self.git_ops.repo.iter_commits():
+            commit_date = datetime.fromtimestamp(commit.committed_date)
+            commits.append((commit.hexsha, commit_date, commit.message))
 
-            def do_rollback():
-                commit_id = selected_commit.get()
-                if not commit_id:
-                    messagebox.showerror("错误", "请选择要回退的版本！")
-                    return
+            # 创建单选按钮
+            radio = ttk.Radiobutton(
+                frame,
+                text=f"{commit_date.strftime('%Y-%m-%d %H:%M')} - {commit.message}",
+                value=commit.hexsha,
+                variable=selected_commit
+            )
+            radio.pack(anchor=tk.W, pady=2)
 
-                if messagebox.askyesno("确认", "回退后将丢失该版本之后的所有更改，是否继续？"):
-                    try:
-                        self.git_ops.repo.git.reset('--hard', commit_id)
-                        messagebox.showinfo("成功", f"已成功回退到提交 {commit_id[:7]}")
-                        self.update_history()
-                        self.show_status_message()
-                        dialog.destroy()
-                    except Exception as e:
-                        messagebox.showerror("错误", f"回退失败: {str(e)}")
+        def do_rollback():
+            commit_id = selected_commit.get()
+            if not commit_id:
+                messagebox.showerror("错误", "请选择要回退的版本！")
+                return
 
-            # 添加按钮
-            btn_frame = ttk.Frame(dialog)
-            btn_frame.pack(fill=tk.X, pady=10)
-            ttk.Button(btn_frame, text="回退", command=do_rollback).pack(side=tk.LEFT, padx=5)
-            ttk.Button(btn_frame, text="取消", command=dialog.destroy).pack(side=tk.LEFT, padx=5)
+            if messagebox.askyesno("确认", "回退后将丢失该版本之后的所有更改，是否继续？"):
+                try:
+                    self.git_ops.repo.git.reset('--hard', commit_id)
+                    messagebox.showinfo("成功", f"已成功回退到提交 {commit_id[:7]}")
+                    self.update_history()
+                    self.show_status_message()
+                    dialog.destroy()
+                except Exception as e:
+                    messagebox.showerror("错误", f"回退失败: {str(e)}")
 
-        except Exception as e:
-            messagebox.showerror("错误", f"获取提交历史失败: {str(e)}")
-            dialog.destroy()
+        # 添加按钮
+        btn_frame = ttk.Frame(dialog)
+        btn_frame.pack(fill=tk.X, pady=10)
+        ttk.Button(btn_frame, text="回退", command=do_rollback).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(btn_frame, text="取消", command=dialog.destroy).pack(side=tk.RIGHT, padx=5)
 
+    @require_repo
     def push_to_remote(self):
         """推送到远程仓库"""
         if self.is_pushing or self.is_pulling:
             messagebox.showwarning("提示", "有正在进行的操作，请等待完成...")
-            return
-
-        if not self.git_ops.repo:
-            messagebox.showerror("错误", "请先选择仓库！")
             return
 
         try:
@@ -436,23 +414,20 @@ class GitGUI:
             error_msg = str(error)
             if "Could not read from remote repository" in error_msg:
                 messagebox.showerror("错误",
-                    "无法连接到远程仓库！\n可能的原因：\n"
-                    "1. 远程仓库地址不正确\n"
-                    "2. 没有仓库访问权限\n"
-                    "3. 未配置SSH密钥")
+                                     "无法连接到远程仓库！\n可能的原因：\n"
+                                     "1. 远程仓库地址不正确\n"
+                                     "2. 没有仓库访问权限\n"
+                                     "3. 未配置SSH密钥")
             else:
                 messagebox.showerror("错误", f"推送失败: {error_msg}")
         else:
             messagebox.showerror("错误", f"推送失败: {str(error)}")
 
+    @require_repo
     def pull_from_remote(self):
         """从远程仓库拉取更新"""
         if self.is_pushing or self.is_pulling:
             messagebox.showwarning("提示", "有正在进行的操作，请等待完成...")
-            return
-
-        if not self.git_ops.repo:
-            messagebox.showerror("错误", "请先选择仓库！")
             return
 
         try:
@@ -518,17 +493,17 @@ class GitGUI:
             error_msg = str(error)
             if "Could not read from remote repository" in error_msg:
                 messagebox.showerror("错误",
-                    "无法连接到远程仓库！\n可能的原因：\n"
-                    "1. 远程仓库地址不正确\n"
-                    "2. 没有仓库访问权限\n"
-                    "3. 未配置SSH密钥")
+                                     "无法连接到远程仓库！\n可能的原因：\n"
+                                     "1. 远程仓库地址不正确\n"
+                                     "2. 没有仓库访问权限\n"
+                                     "3. 未配置SSH密钥")
             else:
                 messagebox.showerror("错误", f"拉取失败: {error_msg}")
         else:
             messagebox.showerror("错误", f"拉取失败: {str(error)}")
 
+
 if __name__ == "__main__":
     root = tk.Tk()
     app = GitGUI(root)
     root.mainloop()
-

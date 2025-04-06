@@ -1,17 +1,27 @@
+import functools
+from tkinter import messagebox
+
 from git import Repo, GitCommandError
 from datetime import datetime, timedelta
-import os
+
+from utils import handle_exception, require_repo
+
 
 class GitOperations:
     def __init__(self):
         self.repo = None
         self.repo_path = None
 
-    def init_repo(self, path):
+    def init_repo(self,path):
         """初始化仓库"""
-        self.repo = Repo.init(path)
-        self.repo_path = path
-        return self.repo
+        if not self.repo_path:
+            messagebox.showerror("错误", "请先选择文件夹！")
+            return
+        try:
+            self.repo = Repo.init(path)
+            self.repo_path = path
+        except Exception as e:
+            messagebox.showerror("错误", f"初始化失败: {str(e)}")
 
     def load_repo(self, path):
         """加载已存在的仓库"""
@@ -19,41 +29,41 @@ class GitOperations:
         self.repo_path = path
         return self.repo
 
+    @handle_exception("检查状态失败")
     def check_repo_status(self):
         """检查仓库状态并返回提示信息"""
         if not self.repo:
             return "请先选择或初始化Git仓库"
 
-        try:
-            status = self.repo.git.status()
-            messages = []
+        status = self.repo.git.status()
+        messages = []
 
-            if "Changes not staged for commit" in status and "Changes to be committed" in status:
-                messages.append("有未暂存和待提交的更改，建议先执行'添加到暂存区'，再执行'提交更改'")
-            elif "Changes not staged for commit" in status:
-                messages.append("工作区有未暂存的更改，建议执行'添加到暂存区'")
-            elif "Changes to be committed" in status:
-                messages.append("暂存区有文件待提交，建议执行'提交更改'")
+        if "Changes not staged for commit" in status and "Changes to be committed" in status:
+            messages.append("有未暂存和待提交的更改，建议先执行'添加到暂存区'，再执行'提交更改'")
+        elif "Changes not staged for commit" in status:
+            messages.append("工作区有未暂存的更改，建议执行'添加到暂存区'")
+        elif "Changes to be committed" in status:
+            messages.append("暂存区有文件待提交，建议执行'提交更改'")
 
-            if "Your branch is ahead" in status:
-                messages.append("本地有未推送的提交，建议执行'推送到远程'")
+        if "Your branch is ahead" in status:
+            messages.append("本地有未推送的提交，建议执行'推送到远程'")
 
-            if not self.repo.remotes:
-                messages.append("未配置远程仓库，建议添加GitHub仓库链接")
+        if not self.repo.remotes:
+            messages.append("未配置远程仓库，建议添加GitHub仓库链接")
 
-            return "\n".join(messages) if messages else "仓库状态正常"
+        return "\n".join(messages) if messages else "仓库状态正常"
 
-        except Exception as e:
-            return f"检查状态失败: {str(e)}"
-
+    @require_repo
     def add_to_stage(self):
         """添加文件到暂存区"""
         self.repo.index.add('*')
 
+    @require_repo
     def commit_changes(self, message):
         """提交更改"""
         return self.repo.index.commit(message)
 
+    @require_repo
     def add_remote(self, url):
         """添加远程仓库"""
         try:
@@ -62,6 +72,7 @@ class GitOperations:
             pass
         return self.repo.create_remote('origin', url)
 
+    @require_repo
     def push_to_remote(self, progress_callback=None):
         """推送到远程仓库"""
         if 'origin' not in [remote.name for remote in self.repo.remotes]:
@@ -79,6 +90,7 @@ class GitOperations:
         
         return origin.push(self.repo.active_branch, progress=progress_handler)
 
+    @require_repo
     def pull_from_remote(self, progress_callback=None):
         """从远程仓库拉取更新"""
         if 'origin' not in [remote.name for remote in self.repo.remotes]:
@@ -93,32 +105,42 @@ class GitOperations:
         
         return origin.pull(progress=progress_handler)
 
-    def get_commit_history(self, days=30):
-        """获取指定天数内的提交历史"""
+    @require_repo
+    def get_commit_history(self, since=None):
+        """获取提交历史"""
         if not self.repo:
             return []
+        
+        commits = []
+        try:
+            # 如果指定了时间范围，则按时间范围获取提交记录
+            if since:
+                for commit in self.repo.iter_commits(since=since):
+                    commits.append({
+                        'id': commit.hexsha,
+                        'date': datetime.fromtimestamp(commit.committed_date),
+                        'message': commit.message,
+                        'author': commit.author.name
+                    })
+            else:
+                # 默认获取所有提交记录
+                for commit in self.repo.iter_commits():
+                    commits.append({
+                        'id': commit.hexsha,
+                        'date': datetime.fromtimestamp(commit.committed_date),
+                        'message': commit.message,
+                        'author': commit.author.name
+                    })
+            return commits
+        except Exception:
+            return []
 
-        history = []
-        one_month_ago = datetime.now() - timedelta(days=days)
-
-        for commit in self.repo.iter_commits():
-            commit_date = datetime.fromtimestamp(commit.committed_date)
-            if commit_date < one_month_ago:
-                break
-            
-            history.append({
-                'id': commit.hexsha,
-                'date': commit_date,
-                'message': commit.message,
-                'author': commit.author.name
-            })
-
-        return history
-
+    @require_repo
     def rollback_to_commit(self, commit_id):
         """回退到指定提交"""
         self.repo.git.reset('--hard', commit_id)
 
+    @require_repo
     def check_git_config(self):
         """检查Git配置"""
         try:
@@ -129,15 +151,18 @@ class GitOperations:
         except:
             return None
 
+    @require_repo
     def set_git_config(self, name, email):
         """设置Git配置"""
         self.repo.git.config('--global', 'user.name', name)
         self.repo.git.config('--global', 'user.email', email)
 
+    @require_repo
     def get_remotes(self):
         """获取远程仓库列表"""
         return [remote.name for remote in self.repo.remotes]
 
+    @require_repo
     def get_remote_url(self):
         """获取远程仓库URL"""
         try:
