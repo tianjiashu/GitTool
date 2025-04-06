@@ -40,6 +40,7 @@ class GitOperations:
 
         status = self.repo.git.status()
         messages = []
+        print(status)
 
         if "Changes not staged for commit" in status and "Changes to be committed" in status:
             messages.append("有未暂存和待提交的更改，建议先执行'添加到暂存区'，再执行'提交更改'")
