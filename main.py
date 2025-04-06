@@ -339,7 +339,6 @@ class GitGUI:
         ttk.Button(btn_frame, text="回退", command=do_rollback).pack(side=tk.RIGHT, padx=5)
         ttk.Button(btn_frame, text="取消", command=dialog.destroy).pack(side=tk.RIGHT, padx=5)
 
-    @require_repo
     def push_to_remote(self):
         """推送到远程仓库"""
         if self.is_pushing or self.is_pulling:
