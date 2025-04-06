@@ -304,7 +304,7 @@ class GitGUI:
 
         # 创建单选框变量
         selected_commit = tk.StringVar()
-
+# 111
         # 获取提交记录
         commits = []
         try:
