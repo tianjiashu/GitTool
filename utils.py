@@ -25,14 +25,31 @@ def require_repo(func):
     """检查是否选择仓库的装饰器"""
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
-        if hasattr(self, 'repo') and not self.repo:
+        # 检查是否有仓库对象
+        if hasattr(self, 'repo'):
+            if not self.repo:
+                messagebox.showerror("错误", "请先选择仓库！")
+                return None
+        elif hasattr(self, 'git_ops'):
+            if not self.git_ops.repo:
+                messagebox.showerror("错误", "请先选择仓库！")
+                return None
+        else:
             messagebox.showerror("错误", "请先选择仓库！")
-            return
-        elif hasattr(self, 'git_ops') and not self.git_ops.repo:
-            messagebox.showerror("错误", "请先选择仓库！")
-            return
+            return None
+
         return func(self, *args, **kwargs)
     return wrapper
+
+def repo_not_exit(self):
+    if hasattr(self, 'repo') and not self.repo:
+        messagebox.showerror("错误", "请先选择仓库！")
+        return True
+    elif hasattr(self, 'git_ops') and not self.git_ops.repo:
+        messagebox.showerror("错误", "请先选择仓库！")
+        return True
+    return False
+
 
 def find_git_executable():
     """自动查找 git.exe 的位置"""

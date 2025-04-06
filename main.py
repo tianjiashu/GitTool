@@ -1,6 +1,6 @@
 import os
 import threading
-from utils import handle_exception, require_repo
+from utils import handle_exception, repo_not_exit, require_repo
 
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, simpledialog
@@ -216,6 +216,7 @@ class GitGUI:
             self.update_history()
             self.show_status_message()
 
+
     @handle_exception("初始化仓库失败")
     def init_repo(self):
         self.git_ops.init_repo(self.git_ops.repo_path)
@@ -223,12 +224,14 @@ class GitGUI:
         messagebox.showinfo("成功", "Git仓库初始化成功！")
         self.show_status_message()
 
+    @require_repo
     @handle_exception("添加到暂存区失败")
     def add_to_stage(self):
         self.git_ops.add_to_stage()
         messagebox.showinfo("成功", "文件已添加到暂存区！")
         self.show_status_message()
 
+    @require_repo
     @handle_exception("提交失败")
     def commit_changes(self):
         commit_message = simpledialog.askstring("提交", "请输入提交信息:")
@@ -238,6 +241,7 @@ class GitGUI:
             self.update_history()
             self.show_status_message()
 
+    @require_repo
     @handle_exception("添加远程仓库失败")
     def add_remote(self):
         github_url = self.github_url.get()
@@ -253,6 +257,7 @@ class GitGUI:
         remote_url = self.git_ops.get_remote_url()
         self.github_url.set(remote_url)
 
+    @require_repo
     @handle_exception("更新历史记录")
     def update_history(self):
         # 清空现有记录
@@ -283,6 +288,7 @@ class GitGUI:
                     commit['message'],
                     commit['author']
                 ))
+
     @require_repo
     @handle_exception("获取提交历史失败")
     def show_rollback_dialog(self):
@@ -368,6 +374,7 @@ class GitGUI:
         ttk.Button(button_frame, text="查看配置教程", command=open_tutorial).pack(side=tk.LEFT, padx=5)
         ttk.Button(button_frame, text="确定", command=dialog.destroy).pack(side=tk.RIGHT, padx=5)
 
+    @require_repo
     def push_to_remote(self):
         """推送到远程仓库"""
         if self.is_pushing or self.is_pulling:
