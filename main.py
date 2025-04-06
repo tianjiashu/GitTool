@@ -115,7 +115,15 @@ class GitGUI:
         self.path_label.pack(side=tk.LEFT, padx=5)
 
         # 添加状态显示标签
-        self.status_label = tk.Label(self.main_frame, text="", fg="red", font=("黑体", 10, "bold"), justify=tk.LEFT)
+        self.status_label = tk.Label(
+            self.main_frame,
+            text="",
+            fg="red",
+            font=("黑体", 10, "bold"),
+            justify=tk.CENTER,  # 文本居中对齐
+            wraplength=700  # 文本自动换行宽度
+        )
+        self.status_label.pack(fill=tk.X, pady=5)
         self.status_label.pack(fill=tk.X, pady=5)
 
         # Git操作区
@@ -304,7 +312,7 @@ class GitGUI:
 
         # 创建单选框变量
         selected_commit = tk.StringVar()
-# 111
+
         # 获取提交记录
         commits = []
         try:
